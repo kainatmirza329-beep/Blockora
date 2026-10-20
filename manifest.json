@@ -1,0 +1,13 @@
+{
+  "name": "Blockora",
+  "short_name": "Blockora",
+  "start_url": "/Blockora/",
+  "scope": "/Blockora/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06122b",
+  "theme_color": "#06122b",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
