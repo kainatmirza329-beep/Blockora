@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<link rel="manifest" href="manifest.json">
+<title>Blockora</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--base:#06122b;--c0:#00f5a0;--c1:#7b2ff7;--c2:#00c3ff}
+html,body{height:100%;background:var(--base)}
+body{
+  font-family:'Segoe UI',Arial,Helvetica,sans-serif;color:#fff;
+  overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none;background:transparent;
+}
+
+/* ===== AURORA BACKGROUND ===== */
+#aurora{position:fixed;inset:0;z-index:-1;overflow:hidden;background:var(--base);transition:background .6s}
+.blob{
+  position:absolute;width:75vmax;height:75vmax;border-radius:50%;
+  filter:blur(70px);opacity:.55;
+  animation:drift 18s ease-in-out infinite alternate;transition:background .6s;
+}
+.b1{background:var(--c0);left:-25%;top:-18%}
+.b2{background:var(--c1);right:-30%;top:18%;animation-duration:22s;animation-delay:-6s}
+.b3{background:var(--c2);left:5%;bottom:-35%;animation-duration:26s;animation-delay:-12s}
+@keyframes drift{
+  0%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(10vmax,6vmax) scale(1.15)}
+  100%{transform:translate(-6vmax,10vmax) scale(.95)}
+}
+
+/* ===== VIEWS ===== */
+#app{position:relative;height:100vh;max-width:460px;margin:0 auto}
+.view{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;padding:14px 12px}
+#menu{justify-content:center;gap:22px}
+.logo{font-size:44px;font-weight:900;letter-spacing:3px;text-shadow:0 4px 0 rgba(0,0,0,.3),0 8px 18px rgba(0,0,0,.4)}
+.menuBtns{display:flex;flex-direction:column;align-items:center;gap:14px}
+.menuTop{position:absolute;top:14px;right:12px;display:flex;gap:8px;align-items:center}
+.modeBar{position:absolute;left:14px;bottom:18px;display:flex;gap:8px}
+.bestLine{font-size:14px;opacity:.9}
+
+/* ===== COMMON UI ===== */
+.coinPill{background:rgba(0,0,0,.3);border-radius:14px;padding:8px 12px;font-weight:800;color:#ffd60a;font-size:15px}
+.btn{
+  border:none;border-radius:16px;padding:12px 16px;font-size:16px;font-weight:800;color:#fff;
+  background:linear-gradient(#5cb0ff,#2475d6);box-shadow:0 5px 0 #17529a;cursor:pointer;
+  transition:transform .08s,box-shadow .08s;
+}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #17529a}
+.btn:disabled{background:linear-gradient(#6b7689,#4a5566);box-shadow:0 5px 0 #343c4a;cursor:not-allowed;opacity:.75}
+.btn.ic{padding:10px 13px;font-size:18px}
+.btn.big{width:230px;padding:16px 0;font-size:22px;letter-spacing:1px}
+.btn.mid{padding:11px 14px;font-size:14px}
+.btn.green{background:linear-gradient(#5ee38c,#22b45c);box-shadow:0 5px 0 #158a43}
+.btn.gold{background:linear-gradient(#ffe066,#f5b800);box-shadow:0 5px 0 #9a6b00;color:#3a2a00}
+.btn.alt{background:linear-gradient(#8b9ab0,#56647a);box-shadow:0 5px 0 #37414f}
+
+/* ===== GAME VIEW ===== */
+.top{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.scoreBox{text-align:center;flex:1}
+.lbl{font-size:12px;opacity:.85;letter-spacing:1px}
+.score{font-size:34px;font-weight:900;text-shadow:0 3px 0 rgba(0,0,0,.3)}
+.row2{width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px}
+#infoTxt{font-size:13px;opacity:.9;flex:1}
+.topBtns{display:flex;gap:6px}
+#board{
+  margin-top:12px;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;padding:8px;
+  border-radius:18px;background:rgba(0,0,0,.28);width:100%;max-width:440px;aspect-ratio:1;
+  box-shadow:0 12px 26px rgba(0,0,0,.35),inset 0 0 0 2px rgba(255,255,255,.12);
+}
+.cell{border-radius:6px;background:rgba(255,255,255,.09)}
+.cell.hint{background:rgba(120,255,160,.4)}
+.cell.bad{background:rgba(255,90,90,.4)}
+#tray{margin-top:18px;width:100%;max-width:440px;display:flex;justify-content:space-around;align-items:center;min-height:130px}
+.slot{width:130px;height:120px;display:flex;align-items:center;justify-content:center;border-radius:18px;background:rgba(0,0,0,.2)}
+.slot.empty{opacity:.25}
+.ghost{position:fixed;z-index:50;pointer-events:none;opacity:.92;filter:drop-shadow(0 8px 10px rgba(0,0,0,.4))}
+#exchNote{display:none;margin-top:10px;font-size:14px;font-weight:800;color:#e9fff5;background:rgba(0,0,0,.3);padding:8px 14px;border-radius:12px;text-align:center}
+.hint2{margin-top:10px;font-size:13px;opacity:.85;text-align:center}
+
+/* ===== OVERLAYS ===== */
+.overlay{
+  position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(5,8,25,.55);z-index:60;padding:20px;
+}
+.card{
+  width:100%;max-width:340px;padding:24px;border-radius:24px;text-align:center;
+  background:rgba(14,20,48,.92);border:1px solid rgba(255,255,255,.15);
+  display:flex;flex-direction:column;gap:14px;align-items:center;
+  box-shadow:0 20px 40px rgba(0,0,0,.4);
+}
+.card h2{font-size:26px;font-weight:900}
+.card p{font-size:16px;opacity:.9;line-height:1.4}
+.card .big{font-size:36px;font-weight:900;color:#ffd60a}
+.card .small{font-size:13px;color:#ffb3a8}
+#auroraOver{
+  background:linear-gradient(170deg,rgba(0,245,160,.4),rgba(123,47,247,.45),rgba(0,195,255,.4));
+  background-size:200% 200%;animation:hueMove 6s ease infinite alternate;
+}
+@keyframes hueMove{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+#auroraOver .card{background:rgba(10,14,40,.85)}
+.lvlGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:100%;max-height:50vh;overflow-y:auto;padding:4px}
+.lvlGrid button{
+  aspect-ratio:1;border:none;border-radius:14px;background:linear-gradient(#6fe39a,#21b15c);
+  color:#fff;font-size:18px;font-weight:800;cursor:pointer;box-shadow:0 4px 0 #14803f;
+}
+.lvlGrid button.locked{background:linear-gradient(#6b7689,#4a5566);box-shadow:0 4px 0 #343c4a;opacity:.7;cursor:not-allowed}
+#themeGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
+.themeBtn{
+  height:80px;border:3px solid transparent;border-radius:18px;color:#fff;
+  font-size:14px;font-weight:800;text-shadow:0 2px 4px rgba(0,0,0,.5);
+  cursor:pointer;display:flex;align-items:flex-end;justify-content:center;padding:8px;
+  box-shadow:0 6px 14px rgba(0,0,0,.3);
+}
+.themeBtn.sel{border-color:#ffd60a}
+
+/* ===== WIND EFFECT ===== */
+#wind{position:fixed;inset:0;z-index:80;display:none;overflow:hidden;pointer-events:none;background:rgba(5,8,25,.2)}
+.streak{
+  position:absolute;top:-20%;bottom:-20%;width:55%;left:-60%;
+  background:linear-gradient(90deg,transparent,rgba(180,255,230,.35),rgba(200,160,255,.3),transparent);
+  filter:blur(12px);animation:wind 1.2s ease-out forwards;
+}
+@keyframes wind{to{left:130%}}
+
+/* ===== TUTORIAL ===== */
+#tutOver{z-index:70;background:rgba(5,8,25,.8)}
+.tutText{font-size:15px;line-height:1.5;opacity:.95}
+#tutStage{position:relative;width:309px;height:400px;margin:0 auto}
+#tutBoard{
+  position:absolute;left:0;top:0;width:309px;height:309px;
+  display:grid;grid-template-columns:repeat(8,34px);grid-auto-rows:34px;gap:3px;padding:8px;
+  border-radius:16px;background:rgba(0,0,0,.35);
+}
+.tcell{border-radius:6px;background:rgba(255,255,255,.09)}
+#tutPiece{
+  position:absolute;left:100px;top:339px;width:108px;height:34px;
+  transition:left 1s ease-in-out,top 1s ease-in-out,opacity .3s;
+}
+#tutPiece .tb{position:absolute;top:0;width:34px;height:34px;border-radius:8px;background:#54a0ff;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.3)}
+#tutHand{
+  position:absolute;left:144px;top:351px;font-size:36px;
+  transition:left 1s ease-in-out,top 1s ease-in-out,opacity .3s;
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,.4));
+}
+</style>
+</head>
+<body>
+
+<div id="aurora">
+  <span class="blob b1"></span>
+  <span class="blob b2"></span>
+  <span class="blob b3"></span>
+</div>
+
+<div id="app">
+
+  <!-- MAIN MENU -->
+  <div class="view" id="menu">
+    <div class="menuTop">
+      <div class="coinPill">🪙 <span id="coinMenu">0</span></div>
+      <button class="btn ic" id="bThemeMenu" title="Theme">🎨</button>
+    </div>
+
+    <div class="logo">BLOCKORA</div>
+    <div class="bestLine">Best score: <b id="bestMenu">0</b></div>
+
+    <div class="menuBtns">
+      <button class="btn big green" id="bPlay">PLAY</button>
+      <button class="btn" id="bLevels">LEVELS</button>
+    </div>
+
+    <div class="modeBar">
+      <button class="btn mid" id="bClassic">Classic</button>
+      <button class="btn mid alt" id="bAdv">Adventure</button>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="view" id="game">
+    <div class="top">
+      <button class="btn ic" id="bBack" title="Menu">☰</button>
+      <div class="scoreBox">
+        <div class="lbl" id="modeLbl">PLAY</div>
+        <div class="score" id="scoreTxt">0</div>
+      </div>
+      <div class="coinPill">🪙 <span id="coinHud">0</span></div>
+    </div>
+
+    <div class="row2">
+      <span id="infoTxt"></span>
+      <div class="topBtns">
+        <button class="btn ic" id="bHelp" title="How to play">❔</button>
+        <button class="btn ic" id="bTheme" title="Theme">🎨</button>
+        <button class="btn ic" id="bRestart" title="New game">↻</button>
+      </div>
+    </div>
+
+    <div id="board"></div>
+    <div id="tray"></div>
+    <div id="exchNote"></div>
+    <div class="hint2">Drag a block onto the grid. Fill a full row or column to clear it!</div>
+  </div>
+</div>
+
+<!-- Wind effect -->
+<div id="wind"></div>
+
+<!-- Tutorial -->
+<div class="overlay" id="tutOver">
+  <div class="card">
+    <h2>How to play</h2>
+    <div class="tutText">Pick up a block from below and place it on an empty spot. When a full row or column is filled, it clears!</div>
+    <div id="tutStage">
+      <div id="tutBoard"></div>
+      <div id="tutPiece"></div>
+      <div id="tutHand">👆</div>
+    </div>
+    <button class="btn green" id="bTutDone">Got it, let's play</button>
+  </div>
+</div>
+
+<!-- Theme -->
+<div class="overlay" id="themeOver">
+  <div class="card">
+    <h2>Choose a theme</h2>
+    <p>The background and glow colors will change.</p>
+    <div id="themeGrid"></div>
+    <button class="btn" id="bThemeDone">Done</button>
+  </div>
+</div>
+
+<!-- Level select -->
+<div class="overlay" id="levelOver">
+  <div class="card">
+    <h2>Adventure Levels</h2>
+    <p>Reach the target score to clear a level.</p>
+    <div class="lvlGrid" id="lvlGrid"></div>
+    <button class="btn alt" id="bBackLv">Back</button>
+  </div>
+</div>
+
+<!-- Aurora exchange (Classic only) -->
+<div class="overlay" id="auroraOver">
+  <div class="card">
+    <h2>Aurora</h2>
+    <p>No moves left. Aurora can exchange your blocks for new ones that fit.</p>
+    <p>Aurora left: <b id="auroraLeft">0</b></p>
+    <button class="btn green" id="bExchange">Exchange my blocks</button>
+    <button class="btn alt" id="bGiveUp">Give up</button>
+  </div>
+</div>
+
+<!-- Level complete -->
+<div class="overlay" id="winOver">
+  <div class="card">
+    <h2>Level complete!</h2>
+    <p id="winTxt"></p>
+    <p>🪙 +50 coins</p>
+    <button class="btn green" id="bNext">Next level</button>
+    <button class="btn alt" id="bWinMenu">Main menu</button>
+  </div>
+</div>
+
+<!-- Game over -->
+<div class="overlay" id="over">
+  <div class="card">
+    <h2>Game Over</h2>
+    <div class="big" id="finalScore">0</div>
+    <p id="earnTxt"></p>
+    <p>🪙 Coins: <b id="coinOver">0</b></p>
+    <button class="btn gold" id="bRestartOver">Restart</button>
+    <p class="small" id="noCoin" style="display:none">Not enough coins. Win levels or play to earn coins.</p>
+    <button class="btn alt" id="bMenuOver">Main menu</button>
+  </div>
+</div>
+
+<script>
+const N = 8, GAP = 4, PAD = 8;
+const AURORA_MAX = 3, RESTART_COST = 60, MAX_LEVEL = 30;
+const COLORS = ['#ff6b6b','#feca57','#48dbfb','#1dd1a1','#ff9ff3','#54a0ff','#ff9f43','#a29bfe'];
+const SHAPES = [
+  [[0,0]],
+  [[0,0],[0,1]],
+  [[0,0],[1,0]],
+  [[0,0],[0,1],[0,2]],
+  [[0,0],[1,0],[2,0]],
+  [[0,0],[0,1],[0,2],[0,3]],
+  [[0,0],[1,0],[2,0],[3,0]],
+  [[0,0],[0,1],[1,0],[1,1]],
+  [[0,0],[1,0],[2,0],[2,1]],
+  [[0,0],[0,1],[0,2],[1,0]],
+  [[0,0],[0,1],[0,2],[1,2]],
+  [[0,0],[1,0],[1,1],[1,2]],
+  [[0,2],[1,0],[1,1],[1,2]],
+  [[0,1],[1,0],[1,1],[1,2]],
+  [[0,0],[0,1],[1,1],[1,2]]
+];
+
+// ===== STORAGE =====
+function lsGet(k, def) {
+  try {
+    const v = localStorage.getItem(k);
+    if (v === null) return def;
+    const n = parseInt(v);
+    return isNaN(n) ? def : n;
+  } catch (e) { return def; }
+}
+function lsSet(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+
+function getCoins() { return lsGet('blockoraCoins', 100); }
+function setCoins(v) { lsSet('blockoraCoins', Math.max(0, v)); refreshCoins(); }
+function refreshCoins() {
+  const c = getCoins();
+  document.getElementById('coinMenu').textContent = c;
+  document.getElementById('coinHud').textContent = c;
+}
+function getBest(m) { return lsGet('blockoraBest_' + m, 0); }
+function getMax() { return Math.max(1, lsGet('blockoraMax', 1)); }
+
+// ===== THEMES =====
+const THEMES = [
+  { name:'Aurora',   base:'#06122b', c:['#00f5a0','#7b2ff7','#00c3ff'] },
+  { name:'Sunset',   base:'#2a0a1f', c:['#ff7e5f','#feb47b','#ff3d7f'] },
+  { name:'Ocean',    base:'#03213b', c:['#00d2ff','#3a7bd5','#00e0c6'] },
+  { name:'Forest',   base:'#0b2214', c:['#7ed957','#2aa876','#d4f1a0'] },
+  { name:'Candy',    base:'#3b0f3a', c:['#ff9ff3','#f368e0','#54a0ff'] },
+  { name:'Midnight', base:'#070818', c:['#4b4bff','#1e90ff','#9b59b6'] }
+];
+let themeIdx = Math.min(THEMES.length - 1, Math.max(0, lsGet('blockoraTheme', 0)));
+
+function applyTheme() {
+  const T = THEMES[themeIdx];
+  const root = document.documentElement.style;
+  root.setProperty('--base', T.base);
+  root.setProperty('--c0', T.c[0]);
+  root.setProperty('--c1', T.c[1]);
+  root.setProperty('--c2', T.c[2]);
+}
+function setTheme(i) {
+  themeIdx = i;
+  lsSet('blockoraTheme', i);
+  applyTheme();
+  buildThemeGrid();
+}
+function buildThemeGrid() {
+  const box = document.getElementById('themeGrid');
+  box.innerHTML = '';
+  THEMES.forEach(function (t, i) {
+    const b = document.createElement('button');
+    b.className = 'themeBtn' + (i === themeIdx ? ' sel' : '');
+    b.style.background = 'linear-gradient(135deg,' + t.c[0] + ',' + t.c[1] + ' 55%,' + t.c[2] + ')';
+    b.textContent = t.name;
+    b.addEventListener('click', function () { setTheme(i); });
+    box.appendChild(b);
+  });
+}
+
+// ===== OVERLAY + VIEW HELPERS =====
+const OVERLAYS = ['tutOver', 'themeOver', 'levelOver', 'auroraOver', 'winOver', 'over'];
+function openOv(id) { document.getElementById(id).style.display = 'flex'; }
+function closeOv(id) { document.getElementById(id).style.display = 'none'; }
+function closeAllOv() { OVERLAYS.forEach(closeOv); }
+function anyOverlay() {
+  return OVERLAYS.some(function (id) { return document.getElementById(id).style.display === 'flex'; });
+}
+function showView(name) {
+  document.getElementById('menu').style.display = name === 'menu' ? 'flex' : 'none';
+  document.getElementById('game').style.display = name === 'game' ? 'flex' : 'none';
+}
+
+// ===== WIND + AURORA =====
+function showWind() {
+  const w = document.getElementById('wind');
+  w.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const s = document.createElement('div');
+    s.className = 'streak';
+    s.style.animationDelay = (i * 0.15) + 's';
+    w.appendChild(s);
+  }
+  w.style.display = 'block';
+  setTimeout(function () {
+    w.style.display = 'none';
+    w.innerHTML = '';
+    openAuroraOver();
+  }, 1400);
+}
+function openAuroraOver() {
+  document.getElementById('auroraLeft').textContent = aurora + '/' + AURORA_MAX;
+  openOv('auroraOver');
+}
+function exchangeAurora() {
+  closeOv('auroraOver');
+  aurora--;
+  tray = [0, 1, 2].map(function () { return fitPiece() || randPiece(); });
+  renderTray();
+  updateHud();
+  showNote('Aurora exchanged your blocks. Aurora left: ' + aurora + '/' + AURORA_MAX);
+  if (!anyMove()) handleStuck();
+}
+function showNote(t) {
+  const el = document.getElementById('exchNote');
+  el.textContent = t;
+  el.style.display = 'block';
+}
+function hideNote() {
+  document.getElementById('exchNote').style.display = 'none';
+}
+
+// ===== TUTORIAL =====
+const tutBoard = document.getElementById('tutBoard');
+const tutPiece = document.getElementById('tutPiece');
+const tutHand = document.getElementById('tutHand');
+const TUT_COLOR = '#54a0ff';
+const TUT_PRE = [56, 57, 58, 62, 63];
+const TUT_TARGET = [59, 60, 61];
+const tutCells = [];
+let tutInterval = null;
+
+for (let i = 0; i < 64; i++) {
+  const d = document.createElement('div');
+  d.className = 'tcell';
+  tutBoard.appendChild(d);
+  tutCells.push(d);
+}
+for (let k = 0; k < 3; k++) {
+  const b = document.createElement('div');
+  b.className = 'tb';
+  b.style.left = (k * 37) + 'px';
+  tutPiece.appendChild(b);
+}
+
+function tutSetPos(el, x, y) { el.style.left = x + 'px'; el.style.top = y + 'px'; }
+function tutRender(filled) {
+  for (let i = 0; i < 64; i++) {
+    const on = TUT_PRE.indexOf(i) >= 0 || (filled && TUT_TARGET.indexOf(i) >= 0);
+    tutCells[i].style.background = on ? TUT_COLOR : '';
+  }
+}
+function tutLoop() {
+  tutRender(false);
+  tutPiece.style.transition = 'none';
+  tutHand.style.transition = 'none';
+  tutPiece.style.opacity = 1;
+  tutHand.style.opacity = 1;
+  tutSetPos(tutPiece, 100, 339);
+  tutSetPos(tutHand, 144, 351);
+  void tutPiece.offsetWidth;
+
+  setTimeout(function () {
+    tutPiece.style.transition = 'left 1s ease-in-out, top 1s ease-in-out';
+    tutHand.style.transition = 'left 1s ease-in-out, top 1s ease-in-out';
+    tutSetPos(tutPiece, 119, 267);
+    tutSetPos(tutHand, 163, 279);
+  }, 600);
+  setTimeout(function () {
+    tutPiece.style.opacity = 0;
+    tutHand.style.opacity = 0;
+    tutRender(true);
+  }, 1700);
+  setTimeout(function () {
+    for (let i = 56; i < 64; i++) tutCells[i].style.background = '';
+  }, 2300);
+}
+function showTut() {
+  openOv('tutOver');
+  tutLoop();
+  if (!tutInterval) tutInterval = setInterval(tutLoop, 3200);
+}
+function hideTut() {
+  closeOv('tutOver');
+  if (tutInterval) { clearInterval(tutInterval); tutInterval = null; }
+  lsSet('blockoraTut', 1);
+}
+function seenTut() { return lsGet('blockoraTut', 0) === 1; }
+
+// ===== GAME STATE =====
+const boardEl = document.getElementById('board');
+const trayEl = document.getElementById('tray');
+const cells = [];
+
+let mode = 'play';          // 'play' | 'classic' | 'adventure'
+let advLevel = 1;
+let target = 0;
+let grid = [];
+let tray = [null, null, null];
+let score = 0;
+let best = 0;
+let combo = 0;
+let aurora = 0;
+let ended = false;
+let cellPx = 40;
+let step = 44;
+let drag = null;
+
+function randPiece() {
+  return {
+    shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
+    color: COLORS[Math.floor(Math.random() * COLORS.length)]
+  };
+}
+
+function makeBlock(shape, color, size, gap) {
+  const div = document.createElement('div');
+  let mr = 0, mc = 0;
+  shape.forEach(function (p) { mr = Math.max(mr, p[0]); mc = Math.max(mc, p[1]); });
+  const st = size + gap;
+  div.style.position = 'relative';
+  div.style.width = (mc * st + size) + 'px';
+  div.style.height = (mr * st + size) + 'px';
+  shape.forEach(function (p) {
+    const b = document.createElement('div');
+    b.style.cssText =
+      'position:absolute;left:' + (p[1] * st) + 'px;top:' + (p[0] * st) + 'px;' +
+      'width:' + size + 'px;height:' + size + 'px;border-radius:' + Math.max(4, size * 0.22) + 'px;' +
+      'background:' + color + ';' +
+      'box-shadow:inset 0 -3px 0 rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.3)';
+    div.appendChild(b);
+  });
+  return div;
+}
+
+function buildCells() {
+  boardEl.innerHTML = '';
+  cells.length = 0;
+  for (let i = 0; i < N * N; i++) {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    boardEl.appendChild(d);
+    cells.push(d);
+  }
+}
+
+function layout() {
+  const r = cells[0].getBoundingClientRect();
+  if (r.width > 0) {
+    cellPx = r.width;
+    step = cellPx + GAP;
+  }
+}
+
+function renderBoard() {
+  for (let i = 0; i < N * N; i++) {
+    const c = cells[i];
+    c.classList.remove('hint', 'bad');
+    c.style.background = grid[i] ? grid[i] : '';
+    c.style.boxShadow = grid[i]
+      ? 'inset 0 -4px 0 rgba(0,0,0,.25),inset 0 3px 0 rgba(255,255,255,.3)'
+      : '';
+  }
+}
+
+function renderTray() {
+  trayEl.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot' + (tray[i] ? '' : ' empty');
+    if (tray[i]) {
+      slot.appendChild(makeBlock(tray[i].shape, tray[i].color, 24, 4));
+      slot.addEventListener('pointerdown', (function (idx) {
+        return function (e) { startDrag(e, idx); };
+      })(i));
+    }
+    trayEl.appendChild(slot);
+  }
+}
+
+function updateHud() {
+  document.getElementById('scoreTxt').textContent = score;
+  document.getElementById('coinHud').textContent = getCoins();
+  if (mode === 'adventure') {
+    document.getElementById('modeLbl').textContent = 'LEVEL ' + advLevel;
+    document.getElementById('infoTxt').textContent = 'Target ' + target;
+  } else if (mode === 'classic') {
+    document.getElementById('modeLbl').textContent = 'CLASSIC';
+    document.getElementById('infoTxt').textContent =
+      'Best ' + best + '  ·  Aurora ' + aurora + '/' + AURORA_MAX;
+  } else {
+    document.getElementById('modeLbl').textContent = 'PLAY';
+    document.getElementById('infoTxt').textContent = 'Best ' + best;
+  }
+}
+
+function canPlace(shape, r0, c0) {
+  for (let k = 0; k < shape.length; k++) {
+    const r = r0 + shape[k][0], c = c0 + shape[k][1];
+    if (r < 0 || r >= N || c < 0 || c >= N) return false;
+    if (grid[r * N + c]) return false;
+  }
+  return true;
+}
+
+function fitsSomewhere(shape) {
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      if (canPlace(shape, r, c)) return true;
+    }
+  }
+  return false;
+}
+
+function anyMove() {
+  for (let i = 0; i < 3; i++) {
+    if (tray[i] && fitsSomewhere(tray[i].shape)) return true;
+  }
+  return false;
+}
+
+// Ek aisa block jo board par kahin na kahin fit ho
+function fitPiece() {
+  const order = SHAPES.slice().sort(function () { return Math.random() - 0.5; });
+  for (let i = 0; i < order.length; i++) {
+    if (fitsSomewhere(order[i])) {
+      return { shape: order[i], color: COLORS[Math.floor(Math.random() * COLORS.length)] };
+    }
+  }
+  return null;
+}
+
+function clearLines() {
+  const full = [];
+  let lines = 0;
+  for (let r = 0; r < N; r++) {
+    let ok = true;
+    for (let c = 0; c < N; c++) if (!grid[r * N + c]) { ok = false; break; }
+    if (ok) { lines++; for (let c = 0; c < N; c++) full.push(r * N + c); }
+  }
+  for (let c = 0; c < N; c++) {
+    let ok = true;
+    for (let r = 0; r < N; r++) if (!grid[r * N + c]) { ok = false; break; }
+    if (ok) { lines++; for (let r = 0; r < N; r++) full.push(r * N + c); }
+  }
+  full.forEach(function (idx) { grid[idx] = null; });
+  return lines;
+}
+
+function placePiece(i, r0, c0) {
+  hideNote();
+  const p = tray[i];
+  p.shape.forEach(function (q) { grid[(r0 + q[0]) * N + (c0 + q[1])] = p.color; });
+  tray[i] = null;
+  score += p.shape.length;
+
+  const lines = clearLines();
+  if (lines > 0) {
+    combo++;
+    score += lines * 10 * combo;
+  } else {
+    combo = 0;
+  }
+
+  if (!tray[0] && !tray[1] && !tray[2]) {
+    tray = [randPiece(), randPiece(), randPiece()];
+  }
+
+  if (mode !== 'adventure' && score > best) {
+    best = score;
+    lsSet('blockoraBest_' + mode, best);
+  }
+
+  renderBoard();
+  renderTray();
+  updateHud();
+
+  if (mode === 'adventure' && score >= target) {
+    winLevel();
+    return;
+  }
+  if (!anyMove()) handleStuck();
+}
+
+// Move khatam: Classic mein hawa + aurora, baaki modes mein game over
+function handleStuck() {
+  if (mode === 'classic' && aurora > 0) {
+    showWind();
+    return;
+  }
+  gameOver();
+}
+
+function gameOver() {
+  ended = true;
+  let earned = 0;
+  if (mode !== 'adventure') {
+    earned = Math.floor(score / 10);
+    setCoins(getCoins() + earned);
+  }
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('earnTxt').textContent = mode === 'adventure'
+    ? 'Target was ' + target + '. Try this level again.'
+    : 'Coins earned: +' + earned + '  ·  Best: ' + best;
+  document.getElementById('coinOver').textContent = getCoins();
+
+  const can = getCoins() >= RESTART_COST;
+  const b = document.getElementById('bRestartOver');
+  b.textContent = 'Restart (🪙' + RESTART_COST + ')';
+  b.disabled = !can;
+  document.getElementById('noCoin').style.display = can ? 'none' : 'block';
+  openOv('over');
+}
+
+function winLevel() {
+  ended = true;
+  setCoins(getCoins() + 50);
+  lsSet('blockoraMax', Math.max(getMax(), Math.min(MAX_LEVEL, advLevel + 1)));
+  document.getElementById('winTxt').textContent =
+    'Level ' + advLevel + ' cleared with score ' + score + ' (target ' + target + ').';
+  document.getElementById('bNext').style.display = advLevel < MAX_LEVEL ? 'inline-block' : 'none';
+  openOv('winOver');
+}
+
+// ===== RUN START =====
+function startRun(m, lvl) {
+  closeAllOv();
+  document.getElementById('wind').style.display = 'none';
+  mode = m;
+  if (m === 'adventure') {
+    advLevel = lvl;
+    target = 150 + (lvl - 1) * 70;
+  }
+  ended = false;
+  aurora = m === 'classic' ? AURORA_MAX : 0;
+  grid = new Array(N * N).fill(null);
+  tray = [randPiece(), randPiece(), randPiece()];
+  score = 0;
+  combo = 0;
+  best = m === 'adventure' ? 0 : getBest(m);
+  showView('game');
+  layout();
+  renderBoard();
+  renderTray();
+  hideNote();
+  updateHud();
+  if (!seenTut()) showTut();
+}
+
+function paidRestart() {
+  if (getCoins() < RESTART_COST) return;
+  setCoins(getCoins() - RESTART_COST);
+  startRun(mode, advLevel);
+}
+
+function goMenu() {
+  ended = true;
+  closeAllOv();
+  document.getElementById('wind').style.display = 'none';
+  showView('menu');
+  refreshMenu();
+}
+
+function refreshMenu() {
+  refreshCoins();
+  document.getElementById('bestMenu').textContent = getBest('play');
+}
+
+function buildLevelGrid() {
+  const box = document.getElementById('lvlGrid');
+  box.innerHTML = '';
+  const maxU = getMax();
+  for (let i = 1; i <= MAX_LEVEL; i++) {
+    const b = document.createElement('button');
+    b.textContent = i <= maxU ? i : '🔒';
+    if (i > maxU) b.classList.add('locked');
+    (function (num) {
+      b.addEventListener('click', function () {
+        if (num <= maxU) startRun('adventure', num);
+      });
+    })(i);
+    box.appendChild(b);
+  }
+}
+
+// ===== DRAG =====
+function startDrag(e, i) {
+  if (!tray[i] || ended || anyOverlay()) return;
+  e.preventDefault();
+  const p = tray[i];
+  const g = makeBlock(p.shape, p.color, cellPx, GAP);
+  g.classList.add('ghost');
+  document.body.appendChild(g);
+  const w = parseFloat(g.style.width);
+  const h = parseFloat(g.style.height);
+  drag = { i: i, p: p, g: g, w: w, h: h, r0: 0, c0: 0, ok: false };
+  moveGhost(e.clientX, e.clientY);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onCancel);
+}
+
+function moveGhost(x, y) {
+  if (!drag) return;
+  const gx = x - drag.w / 2;
+  const gy = y - drag.h - 50;
+  drag.g.style.left = gx + 'px';
+  drag.g.style.top = gy + 'px';
+
+  const br = boardEl.getBoundingClientRect();
+  const c0 = Math.round((gx - (br.left + PAD)) / step);
+  const r0 = Math.round((gy - (br.top + PAD)) / step);
+  drag.r0 = r0;
+  drag.c0 = c0;
+  drag.ok = canPlace(drag.p.shape, r0, c0);
+
+  cells.forEach(function (c) { c.classList.remove('hint', 'bad'); });
+  drag.p.shape.forEach(function (q) {
+    const r = r0 + q[0], c = c0 + q[1];
+    if (r >= 0 && r < N && c >= 0 && c < N && !grid[r * N + c]) {
+      cells[r * N + c].classList.add(drag.ok ? 'hint' : 'bad');
+    }
+  });
+}
+
+function onMove(e) { moveGhost(e.clientX, e.clientY); }
+
+function endDrag() {
+  window.removeEventListener('pointermove', onMove);
+  window.removeEventListener('pointerup', onUp);
+  window.removeEventListener('pointercancel', onCancel);
+  cells.forEach(function (c) { c.classList.remove('hint', 'bad'); });
+  if (drag && drag.g) drag.g.remove();
+}
+
+function onUp(e) {
+  if (!drag) return;
+  moveGhost(e.clientX, e.clientY);
+  const i = drag.i, r0 = drag.r0, c0 = drag.c0, ok = drag.ok;
+  endDrag();
+  drag = null;
+  if (ok) placePiece(i, r0, c0);
+}
+
+function onCancel() {
+  endDrag();
+  drag = null;
+}
+
+// ===== BUTTONS =====
+document.getElementById('bPlay').addEventListener('click', function () { startRun('play', 1); });
+document.getElementById('bClassic').addEventListener('click', function () { startRun('classic', 1); });
+document.getElementById('bAdv').addEventListener('click', function () { startRun('adventure', getMax()); });
+document.getElementById('bLevels').addEventListener('click', function () {
+  buildLevelGrid();
+  openOv('levelOver');
+});
+document.getElementById('bBackLv').addEventListener('click', function () { closeOv('levelOver'); });
+
+document.getElementById('bThemeMenu').addEventListener('click', function () {
+  buildThemeGrid();
+  openOv('themeOver');
+});
+document.getElementById('bTheme').addEventListener('click', function () {
+  buildThemeGrid();
+  openOv('themeOver');
+});
+document.getElementById('bThemeDone').addEventListener('click', function () { closeOv('themeOver'); });
+
+document.getElementById('bBack').addEventListener('click', goMenu);
+document.getElementById('bRestart').addEventListener('click', function () { startRun(mode, advLevel); });
+document.getElementById('bHelp').addEventListener('click', showTut);
+document.getElementById('bTutDone').addEventListener('click', hideTut);
+
+document.getElementById('bExchange').addEventListener('click', exchangeAurora);
+document.getElementById('bGiveUp').addEventListener('click', function () {
+  closeOv('auroraOver');
+  gameOver();
+});
+document.getElementById('bNext').addEventListener('click', function () { startRun('adventure', advLevel + 1); });
+document.getElementById('bWinMenu').addEventListener('click', goMenu);
+document.getElementById('bRestartOver').addEventListener('click', paidRestart);
+document.getElementById('bMenuOver').addEventListener('click', goMenu);
+
+window.addEventListener('resize', layout);
+
+// ===== INIT =====
+applyTheme();
+buildCells();
+refreshMenu();
+showView('menu');
+</script>
+</body>
+</html>
